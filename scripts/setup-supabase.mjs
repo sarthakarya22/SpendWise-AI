@@ -5,7 +5,7 @@ process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'));
 const env=Object.fromEntries(fs.readFileSync('.env.setup','utf8').split(/\r?\n/).filter(l=>l.trim()&&!l.trim().startsWith('#')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i).trim(),l.slice(i+1).trim().replace(/^(['"])(.*)\1$/,'$2')]}));
 const url=new URL(env.SUPABASE_PROJECT_URL),ref=url.hostname.endsWith('.supabase.co')?url.hostname.split('.')[0]:url.pathname.match(/\/project\/([a-z0-9]+)/)?.[1];
 if(!ref||!/^[a-z0-9]+$/.test(ref))throw Error('Use the Supabase Project URL from Connect.');
-const origin='http://127.0.0.1:5173';
+const origin=process.env.SPENDWISE_APP_ORIGIN||'http://127.0.0.1:5173';
 const redact=s=>Object.values(env).filter(Boolean).reduce((a,v)=>a.replaceAll(v,'[redacted]'),s);
 async function api(route,{method='GET',body}={}){const r=await fetch(`https://api.supabase.com/v1/projects/${ref}${route}`,{method,headers:{Authorization:`Bearer ${env.SUPABASE_ACCESS_TOKEN}`,...(body&&! (body instanceof FormData)?{'Content-Type':'application/json'}:{})},body:body instanceof FormData?body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error(`${method} ${route}: HTTP ${r.status} ${redact((await r.text()).slice(0,800))}`);const text=await r.text();return text?JSON.parse(text):null}
 async function sql(query){return api('/database/query',{method:'POST',body:{query}})}

@@ -1,9 +1,11 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 const categories=['Food','Shopping','Travel','Entertainment','Bills','Healthcare','Education','Rent','Salary','Investments','Others'];
-const cors={'Access-Control-Allow-Origin':Deno.env.get('APP_ORIGIN')||'http://localhost:5173','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'};
-const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json'}});
+const allowedOrigins=[Deno.env.get('APP_ORIGIN'),'http://127.0.0.1:5173','http://localhost:5173'].filter(Boolean);
 const format=(n:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(n/100);
 Deno.serve(async(req)=>{
+ const requestOrigin=req.headers.get('Origin');
+ const cors={'Access-Control-Allow-Origin':allowedOrigins.includes(requestOrigin)?requestOrigin!:allowedOrigins[0]!,'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'};
+ const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json'}});
  if(req.method==='OPTIONS')return new Response(null,{headers:cors});
  if(req.method!=='POST')return respond({error:'Method not allowed'},405);
  try{
