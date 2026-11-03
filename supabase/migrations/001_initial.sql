@@ -1,0 +1,15 @@
+create table public.profiles (id uuid primary key references auth.users(id) on delete cascade, name text, email text, created_at timestamptz default now());
+create table public.transactions (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, name text not null check (length(trim(name)) between 1 and 150), amount numeric(14,2) not null check(amount > 0 and amount <= 10000000000), type text not null check(type in ('Income','Expense')), category text not null check(category in ('Food','Shopping','Travel','Entertainment','Bills','Healthcare','Education','Rent','Salary','Investments','Others')), date date not null, description text default '' check(length(description)<=1000), created_at timestamptz default now());
+create table public.budgets (id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,category text not null check(category in ('Food','Shopping','Travel','Entertainment','Bills','Healthcare','Education','Rent','Salary','Investments','Others')),monthly_limit numeric(14,2) not null check(monthly_limit>0 and monthly_limit<=10000000000),month text not null check(month ~ '^\d{4}-(0[1-9]|1[0-2])$'),unique(user_id,category,month));
+create table public.ai_insights (id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,insight text not null,generated_at timestamptz default now());
+alter table public.profiles enable row level security;
+alter table public.transactions enable row level security;
+alter table public.budgets enable row level security;
+alter table public.ai_insights enable row level security;
+create policy own_profile on public.profiles for all to authenticated using(id=auth.uid()) with check(id=auth.uid());
+create policy own_transactions on public.transactions for all to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+create policy own_budgets on public.budgets for all to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+create policy own_insights on public.ai_insights for all to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+create index transactions_user_date on public.transactions(user_id,date);
+create function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$ begin insert into public.profiles(id,name,email) values(new.id,new.raw_user_meta_data->>'name',new.email); return new; end; $$;
+create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
